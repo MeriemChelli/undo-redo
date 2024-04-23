@@ -1,12 +1,17 @@
 import Stack from './stack';
 import Konva from "konva";
 import { createMachine, interpret } from "xstate";
-
+import UndoManager from './UndoManager';
+import Commande from './commande';
 const stage = new Konva.Stage({
     container: "container",
     width: 400,
     height: 400,
 });
+
+const buttonUndo = document.getElementById("undo");
+const buttonRedo = document.getElementById("redo");
+const undoManager = new UndoManager();
 
 // Une couche pour le dessin
 const dessin = new Konva.Layer();
@@ -20,7 +25,7 @@ let polyline // La polyline en cours de construction;
 
 const polylineMachine = createMachine(
     {
-        /** @xstate-layout N4IgpgJg5mDOIC5QAcD2AbAngGQJYDswA6XCdMAYgFkB5AVQGUBRAYWwEkWBpAbQAYAuohSpYuAC65U+YSAAeiAIwAWAGxEArAGYAHDo0AmA3x2qNqxRoA0ITEoCciosoDsRg-Zf6DWg4pcAvgE2aFh4hETSYAAKqATi1PTMbJy8grJoYpLSsgoIFvZEOpbKij5l9jou9jZ2CIqOzm4+Ospa1YZ8qkEhGDgExFGx8YmMTLQAakz8QkggmRJSMnN5rlpE9ho69j5aWpVtLta2SnxOBjpaDRcWygZqOj3zfeGDhMP4CUywAMYAhsgwDMMqJFjkVkpVAZnNt2mV9tVfFpaohfHwigYNG0NOZVEcdAYnqF+hEALZ-fCYD7iWCjZIcbjAuYLbLLUB5RR8FzrcxaZR8YwXFyuFEIAxeIgubmqPH2eyuExtIkvAZEcmU6m02hjFKMxSzERZJa5U6qHSadp85RYy6KKqirR45xaPhdUqKO1mZTKsKq9VUuKfLVJcY0KZMw1gtnyJRlDREGVQtyGLHWlyiznnW07Uwqe6BYLPX1kikB+K077-QER55G8HsxA6AWaLmeHFVLFQh2FKoGKHy-ZaDRlAu9YvEf2aihMT5gABONZZxohCB2PalRiHpj5JlFAFpOc4PUd2splJcXDLHoXia81aWpwAhP4-ADWsGQL6B6WZoNZJoQFxFHUNp2kuGVrTxZQHWMDEsSHXF8UJG8VRLDVAxpChnzfD8vx4fUQTraNVlUZQikqTo7XsLlqhg9ECXgnEZXxRQtCCQt8FQCA4BBcdCKjAC9zUI9pVUAUvDRZETgQPdPHIvhHC8M12guZCxxJYhSHIfj-xXJwtj7PZPD8WUzR0UU-DIzFTE8UoqmAvkfQ0yJ3gwnTlwbBBTyIfZzz4DRqIJPgrgslQiGs1RbLtIDVEclDx3vdDy3c+sY1XS5JQ0BT2li6zzOkyyE0RD1gv2Kp5XYgIgA */
+        /** @xstate-layout N4IgpgJg5mDOIC5QAcD2AbAngGQJYDswA6XCdMAYgFkB5AVQGUBRAYWwEkWBpAbQAYAuohSpYuAC65U+YSAAeiABwAmAJxEAjAGYA7ABZFfVar2mNGgDQhMiZQDZlmgKyKtfPtrt6nGu3YC+-lZoWHiEJGSUdAByACI0-EJIIGhiktKyCghefESKGsoGyjqq+lp6OlY2CBo6dkR2Tu4F9i26gcEYOATEpOQUAEpM8YmyqRJSMslZXlpEfIr6qnzKTjp8TnZaVUoaRG7NTmZueu1BKV1hxNJgAAqoBOLU9MxsnLyCY6ITGdNKappdAYjCYzJZrIgXHM7O4PIomnoVnwtB0LqEekQbvdHs9GExaAA1JijZLjdJTUBZYz1AxLRTeLz0xQ7BBaLbzWF6QpaVSGDaokLdcJYh74J5MWAAYwAhsgwCSRGlJpklHY9sj9K5VMplNotMoWb56oYVOttYpVOUNALLhiALbS-CYbFi2C414cbgKi5K36UxAwoiFYzLJxrTZ8PR+Fl6VRODn0vQaENhuyKG3o8IOp0u8Ru2h4t5ejRJRU-CnyRBs9QOWOGHxGPzlQ3FIhOYOLLSLFSNa3nQVXIjZ52ivPu-E0InesnKv41Ar7NPrZOKGE6RSrlk8msuUw+EpbfRODNC4jD3NuiUyuXT77klWsuw1jsbDSNrZ6FnBog6YM6de-ioFQnoO56jpeYpgAATrevoVlk1YNC+DaqE2n4Qqy3jzDoTR8OshjlDqKL9raWaOiOjxugAQtKkoANawMgtHyp8pJ3rO-oIFyW6RvsCxJk4pS6smqggfa5EXhQNH0YxzE8CWXxwQ+iG1ryr7vs2GGmLkXK4Ty7itAEqL4KgEBwF8mZgIp5YPgAtHYLK2fGIYua5xjEZ0lkROQ1n3nOdg4fsSzroivI8uC1TFDoHKwss+QaKc-IkV5IqPL5HGVjUHjxloWgFGqjIbPkMbsloenaoJOgrmJZE5uB6V+plBR7PYhRhsJTQmCygk5buHjIjypjpoE-hAA */
         id: "polyLine",
         initial: "idle",
         states: {
@@ -30,6 +35,19 @@ const polylineMachine = createMachine(
                         target: "onePoint",
                         actions: "createLine",
                     },
+                    UNDO: {
+                        target: "idle",
+                        actions: "undo",
+                        internal: true,
+                        cond: "canUndo"
+                    },
+
+                    REDO: {
+                        target: "idle",
+                        actions: "redo",
+                        internal: true,
+                        cond: "canRedo"
+                    }
                 },
             },
             onePoint: {
@@ -119,7 +137,9 @@ const polylineMachine = createMachine(
                 polyline.points(newPoints);
                 polyline.stroke("black"); // On change la couleur
                 // On sauvegarde la polyline dans la couche de dessin
-                dessin.add(polyline); // On l'ajoute à la couche de dessin
+                //dessin.add(polyline); // On l'ajoute à la couche de dessin
+                undoManager.executeCommand(new SaveCommand(dessin,polyline));
+
             },
             addPoint: (context, event) => {
                 const pos = stage.getPointerPosition();
@@ -128,6 +148,21 @@ const polylineMachine = createMachine(
                 polyline.points(newPoints); // Set the updated points to the line
                 temporaire.batchDraw(); // Redraw the layer to reflect the changes
             },
+            undo: (context, event) => {
+                undoManager.undo(); // Appelle la méthode undo de l'UndoManager
+                // Désactive le bouton undo si aucune opération undo n'est possible
+                buttonUndo.disabled = !undoManager.canUndo();
+                // Active le bouton redo après une opération undo
+                buttonRedo.disabled = false;
+            },
+            redo: (context, event) => {
+                undoManager.redo(); // Appelle la méthode redo de l'UndoManager
+                // Désactive le bouton redo si aucune opération redo n'est possible
+                buttonRedo.disabled = !undoManager.canRedo();
+                // Active le bouton undo après une opération redo
+                buttonUndo.disabled = false;
+            },
+            
             abandon: (context, event) => {
                 polyline.remove();
             },
@@ -149,6 +184,13 @@ const polylineMachine = createMachine(
                 // Deux coordonnées pour chaque point, plus le point provisoire
                 return polyline.points().length > 6;
             },
+            canUndo: (context, event) => {
+                return undoManager.canUndo();
+            },
+            canRedo: (context, event) => {
+                return undoManager.canRedo();
+            },
+            
         },
     }
 );
@@ -171,3 +213,15 @@ window.addEventListener("keydown", (event) => {
     console.log("Key pressed:", event.key);
     polylineService.send(event.key);
 });
+
+
+
+
+undoButton.addEventListener("click", () => {
+    undoManager.undo();
+})
+
+
+redoButton.addEventListener("click", () => {
+    undoManager.redo();
+})
